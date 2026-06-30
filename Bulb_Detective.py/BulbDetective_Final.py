@@ -46,6 +46,7 @@ medium_button = pygame.Rect(420,400,180,60)
 hard_button = pygame.Rect(640,400,180,60)
 start_button = pygame.Rect(400,600,200,60)
 restart_button = pygame.Rect(800,30,160,50)
+submit_button = pygame.Rect(600,30,160,50)
 # ---------------- BULBS ----------------
 def create_bulbs(rows, cols):
     positions = []
@@ -59,11 +60,26 @@ def create_bulbs(rows, cols):
 
     return positions
 # ---------------- CONDITIONS ----------------
-conditions = [
+easy_conditions = [
     "Turn ON all bulbs",
     "Turn OFF all bulbs",
     "Make exactly half ON",
     "More ON than OFF"
+]
+medium_conditions = [
+    "Corner Bulbs ON",
+    "Corner Bulbs OFF",
+    "First Row ON",
+    "Last Row ON",
+    "Checkerboard"
+]
+hard_conditions = [
+    "X Pattern",
+    "Plus Pattern",
+    "Border Bulbs ON",
+    "Center Bulbs ON",
+    "Mirror Pattern",
+    "Alternate Rows"
 ]
 # ---------------- LOAD LEVEL ----------------
 def load_level():
@@ -78,19 +94,141 @@ def load_level():
         bulb_positions = create_bulbs(4,4)
         time_limit = 10
     bulb_states = [True]*len(bulb_positions)
-    current_condition = random.choice(conditions)
-# ---------------- CHECK WIN ----------------
+    if difficulty == "Easy":
+        current_condition = random.choice(easy_conditions)
+    elif difficulty == "Medium":
+        current_condition = random.choice(medium_conditions)
+    else:
+        current_condition = random.choice(hard_conditions)
 def check_condition():
     on = bulb_states.count(True)
     off = bulb_states.count(False)
+    total = len(bulb_states)
+    # ---------- EASY ----------
     if current_condition == "Turn ON all bulbs":
-        return on == len(bulb_states)
-    if current_condition == "Turn OFF all bulbs":
-        return off == len(bulb_states)
-    if current_condition == "Make exactly half ON":
-        return on == len(bulb_states)//2
-    if current_condition == "More ON than OFF":
+        return on == total
+    elif current_condition == "Turn OFF all bulbs":
+        return off == total
+    elif current_condition == "Make exactly half ON":
+        return on == total // 2
+    elif current_condition == "More ON than OFF":
         return on > off
+    # ---------- MEDIUM ----------
+    elif current_condition == "Corner Bulbs ON":
+        corners = [0, 3, total-4, total-1]
+        for i in range(total):
+            if i in corners:
+                if not bulb_states[i]:
+                    return False
+            else:
+                if bulb_states[i]:
+                    return False
+        return True
+    elif current_condition == "Corner Bulbs OFF":
+        corners = [0, 3, total-4, total-1]
+        for i in range(total):
+            if i in corners:
+                if bulb_states[i]:
+                    return False
+            else:
+                if not bulb_states[i]:
+                    return False
+        return True
+    elif current_condition == "First Row ON":
+        cols = 4
+        for i in range(total):
+            if i < cols:
+                if not bulb_states[i]:
+                    return False
+            else:
+                if bulb_states[i]:
+                    return False
+        return True
+    elif current_condition == "Last Row ON":
+        cols = 4
+        start = total - cols
+        for i in range(total):
+            if i >= start:
+                if not bulb_states[i]:
+                    return False
+            else:
+                if bulb_states[i]:
+                    return False
+        return True
+    elif current_condition == "Checkerboard":
+        cols = 4
+        for i in range(total):
+            row = i // cols
+            col = i % cols
+            expected = (row + col) % 2 == 0
+            if bulb_states[i] != expected:
+                return False
+        return True
+    # ---------- HARD ----------
+    elif current_condition == "X Pattern":
+        if total != 16:
+            return False
+        x_indices = [0, 3, 5, 6, 9, 10, 12, 15]
+        for i in range(total):
+            if i in x_indices:
+                if not bulb_states[i]:
+                    return False
+            else:
+                if bulb_states[i]:
+                    return False
+        return True
+    elif current_condition == "Plus Pattern":
+        if total != 16:
+            return False
+        plus = [1, 4, 5, 6, 7, 9, 13]
+        for i in range(total):
+            if i in plus:
+                if not bulb_states[i]:
+                    return False
+            else:
+                if bulb_states[i]:
+                    return False
+        return True
+    elif current_condition == "Border Bulbs ON":
+        if total != 16:
+            return False
+        border = [0,1,2,3,4,7,8,11,12,13,14,15]
+        for i in range(total):
+            if i in border:
+                if not bulb_states[i]:
+                    return False
+            else:
+                if bulb_states[i]:
+                    return False
+        return True
+    elif current_condition == "Center Bulbs ON":
+        if total != 16:
+            return False
+        center = [5,6,9,10]
+        for i in range(total):
+            if i in center:
+                if not bulb_states[i]:
+                    return False
+            else:
+                if bulb_states[i]:
+                    return False
+        return True
+    elif current_condition == "Mirror Pattern":
+        rows = total // 4
+        for r in range(rows):
+            if bulb_states[r*4] != bulb_states[r*4+3]:
+                return False
+            if bulb_states[r*4+1] != bulb_states[r*4+2]:
+                return False
+        return True
+    elif current_condition == "Alternate Rows":
+        rows = total // 4
+        for r in range(rows):
+            expected = (r % 2 == 0)
+            for c in range(4):
+                if bulb_states[r*4+c] != expected:
+                    return False
+        return True
     return False
 # ---------------- MAIN LOOP ----------------
 running = True
@@ -125,12 +263,14 @@ while running:
                 if restart_button.collidepoint(mouse_x, mouse_y):
                     load_level()
                     start_time = time.time()
-                for i,(x,y) in enumerate(bulb_positions):
-                    dist = ((mouse_x-x)**2 + (mouse_y-y)**2)**0.5
-                    if dist < 40:
-                        bulb_states[i] = not bulb_states[i]
-                        if check_condition():
-                            game_state = WIN
+                elif submit_button.collidepoint(mouse_x, mouse_y):
+                    if check_condition():
+                        game_state = WIN
+                else:
+                    for i, (x, y) in enumerate(bulb_positions):
+                        bulb_rect = pygame.Rect(x-10, y-10, 80, 80)
+                        if bulb_rect.collidepoint(mouse_x, mouse_y):
+                            bulb_states[i] = not bulb_states[i]
     # ---------------- TIMER ----------------
     if game_state == GAME:
         elapsed = int(time.time() - start_time)
@@ -168,8 +308,10 @@ while running:
         screen.blit(font.render(f"Score: {score}",True,WHITE),(20,20))
         screen.blit(font.render(f"Time: {remaining}",True,WHITE),(20,70))
         screen.blit(font.render(current_condition,True,WHITE),(20,120))
-        pygame.draw.rect(screen,GREEN,restart_button)
-        screen.blit(font.render("Restart",True,WHITE),restart_button.move(20,10))
+        pygame.draw.rect(screen, GREEN, submit_button)
+        screen.blit(font.render("Submit", True, WHITE),submit_button.move(30,10))
+        pygame.draw.rect(screen, GREEN, restart_button)
+        screen.blit(font.render("Restart", True, WHITE),restart_button.move(20,10))
     # ---------------- WIN SCREEN ----------------
     if game_state == WIN:
         screen.blit(title_font.render("🎉 YOU WIN!",True,GREEN),(320,300))
